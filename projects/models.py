@@ -127,7 +127,7 @@ class Project(models.Model):
     batch = models.OneToOneField('Batch', on_delete=models.CASCADE, related_name='project')
     title = models.CharField(max_length=255)
 
-    abstract = CloudinaryField(resource_type='raw', public_id=abstract_id)
+    abstract = CloudinaryField(resource_type='raw', public_id=abstract_id,blank=True,null=True)
     documentation = CloudinaryField(resource_type='raw', public_id=documentation_id)
     presentation = CloudinaryField(resource_type='raw', public_id=presentation_id)
     nptel = CloudinaryField(resource_type='raw', public_id=nptel_id, null=True, blank=True)
