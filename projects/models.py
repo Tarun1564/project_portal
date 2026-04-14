@@ -127,11 +127,11 @@ class Project(models.Model):
     batch = models.OneToOneField('Batch', on_delete=models.CASCADE, related_name='project')
     title = models.CharField(max_length=255)
 
-    abstract = CloudinaryField(resource_type='raw', public_id=abstract_id)
-    documentation = CloudinaryField(resource_type='raw', public_id=documentation_id)
-    presentation = CloudinaryField(resource_type='raw', public_id=presentation_id)
-    nptel = CloudinaryField(resource_type='raw', public_id=nptel_id, null=True, blank=True)
-    paper = CloudinaryField(resource_type='raw', public_id=paper_id, null=True, blank=True)
+    abstract = CloudinaryField(resource_type='raw', public_id=abstract_id,folder=abstract_id)
+    documentation = CloudinaryField(resource_type='raw', public_id=documentation_id,folder=documentation_id)
+    presentation = CloudinaryField(resource_type='raw', public_id=presentation_id,folder=presentation_id)
+    nptel = CloudinaryField(resource_type='raw', public_id=nptel_id, null=True, blank=True,folder=nptel_id)
+    paper = CloudinaryField(resource_type='raw', public_id=paper_id, null=True, blank=True,folder=paper_id)
 
     coordinator_approved = models.BooleanField(default=False)
     rating = models.FloatField(null=True, blank=True, default=0)
