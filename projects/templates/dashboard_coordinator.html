@@ -1,0 +1,475 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Coordinator Dashboard</title>
+
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+
+<style>
+body{background:#f4f6f9;font-family:"Segoe UI",sans-serif}
+.navbar{background:linear-gradient(90deg,#1e3c72,#2a5298)}
+.dashboard-container{margin-top:90px;padding-bottom:40px;}
+.section-box{background:#fff;padding:20px;border-radius:14px;margin-bottom:30px}
+.section-title{font-weight:600;text-align:center;margin-bottom:15px}
+.select-card{background:#fff;border:1px solid #ddd;border-radius:12px;padding:18px;text-align:center;cursor:pointer}
+.select-card.selected{border-color:#0d6efd}
+.select-card i{font-size:24px;color:#0d6efd}
+#main-content{display:flex;gap:20px;align-items:flex-start}
+#table-box{flex:2}
+#file-viewer{flex:1;position:sticky;top:100px;display:none;border:1px solid #ddd;border-radius:12px;background:#fff;padding:10px}
+#file-viewer iframe{width:100%;height:650px;border:none}
+.side-nav{width:240px;height:100vh;background:#fff;border-right:1px solid #e5e5e5;padding:20px 15px;position:fixed;left:0;top:0}
+.side-title{font-weight:600;margin-bottom:20px;color:#333}
+.side-item{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:8px;cursor:pointer;margin-bottom:8px;transition:.2s;color:#444}
+.side-item i{font-size:18px;color:#0d6efd}
+.side-item:hover{background:#f2f6ff}
+.side-item.active{background:#0d6efd;color:#fff}
+.side-item.active i{color:#fff}
+</style>
+</head>
+
+<body>
+
+<nav class="navbar navbar-dark navbar-expand fixed-top">
+  <div class="container-fluid">
+    <span class="navbar-brand">
+      <i class="bi bi-mortarboard-fill"></i> AITAM Project Portal
+    </span>
+    <ul class="navbar-nav me-auto ms-4 flex-row">
+      {% for g in graduation %}
+      <li class="nav-item">
+        <a class="nav-link d-flex align-items-center"
+           href="javascript:void(0);"
+           data-graduation-id="{{ g.id }}"
+           onclick="loadCourses(this.getAttribute('data-graduation-id'), this)">
+          <i class="bi bi-mortarboard-fill me-2"></i>
+          {{ g }}
+        </a>
+      </li>
+      {% endfor %}
+    </ul>
+    <div class="text-white d-flex align-items-center">
+      <i class="bi bi-person-circle me-1"></i>
+      {{ request.user.username }}
+      <a href="{% url 'logout' %}" class="text-white ms-3">Logout</a>
+    </div>
+
+  </div>
+</nav>
+
+
+
+
+<div class="container dashboard-container">
+
+<div class="section-box">
+<h4 class="section-title">Upload Batches</h4>
+<form method="POST" action="{% url 'upload_batches_excel' %}" enctype="multipart/form-data" class="text-center">
+{% csrf_token %}
+<input type="file" name="excel_file" class="form-control w-50 mx-auto mb-3" accept=".xlsx,.xls">
+<button type="submit" class="btn btn-primary">Upload Excel</button>
+</form>
+</div>
+<div class="section-box" id="course-section" style="display:none">
+    <h4 class="section-title">Select Course</h4>
+    <div class="row g-3 justify-content-center" id="course-box"></div>
+</div>
+<div class="section-box" id="branch-section" style="display:none">
+<h4 class="section-title">Select Branch</h4>
+<div class="row g-3 justify-content-center" id="branch-box"></div>
+</div>
+
+<div class="section-box" id="year-section" style="display:none">
+<h4 class="section-title">Select Academic Year</h4>
+<select class="form-select w-50 mx-auto" id="year-select" onchange="loadBatches()">
+<option value="">-- Select Year --</option>
+</select>
+</div>
+
+<div id="main-content" style="display:none">
+
+<div class="section-box" id="table-box">
+<div class="d-flex justify-content-between align-items-center mb-2">
+<h4 class="section-title mb-0">Academic Projects</h4>
+<button id="download-excel-btn" class="btn btn-success btn-sm" onclick="generateFeedbackLink()">
+<i class="bi bi-file-earmark-excel"></i> Generate Feedback Link
+</button>
+<a href="{% url 'download_all_nptel' %}" class="btn btn-warning">
+    Download All NPTEL Certificates
+</a>
+
+<button class="btn btn-success btn-sm"
+        onclick="downloadBatchExcel()">
+    <i class="bi bi-file-earmark-excel"></i>
+    Download Batch Excel
+</button>
+</div>
+
+<div class="table-responsive">
+<table class="table table-bordered text-center align-middle">
+<thead class="table-dark">
+<tr>
+<th>Batch</th>
+<th>Guide</th>
+<th>Title</th>
+<th>Abstract</th>
+<th>Docs</th>
+<th>PPT</th>
+<th>NPTEL</th>
+<th>Paper</th>
+<th>Status</th>
+<th>Action</th>
+<th>Students</th>
+<th>Rating</th>
+</tr>
+</thead>
+<tbody id="batch-detail-table-body"></tbody>
+</table>
+</div>
+</div>
+
+<div id="file-viewer">
+<div class="d-flex justify-content-between align-items-center mb-2">
+<h6 class="mb-0">File Preview</h6>
+<button class="btn btn-sm btn-outline-danger" onclick="closePreview()"><i class="bi bi-x-lg"></i></button>
+</div>
+<iframe id="file-frame"></iframe>
+</div>
+
+</div>
+
+</div>
+
+<div class="modal fade" id="studentsModal" tabindex="-1">
+<div class="modal-dialog modal-lg">
+<div class="modal-content">
+<div class="modal-header">
+<h5>Batch Students</h5>
+<button class="btn-close" data-bs-dismiss="modal"></button>
+</div>
+<div class="modal-body">
+<table class="table table-bordered text-center">
+<thead>
+<tr><th>#</th><th>Name</th><th>Roll No</th><th>Guide</th><th>Coordinator</th></tr>
+</thead>
+<tbody id="students-table-body"></tbody>
+</table>
+</div>
+<div class="modal-footer">
+<button class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+</div>
+</div>
+</div>
+</div>
+
+<div class="modal fade" id="feedbackModal" tabindex="-1">
+<div class="modal-dialog">
+<div class="modal-content">
+<div class="modal-header">
+<h5>Feedback</h5>
+<button class="btn-close" data-bs-dismiss="modal"></button>
+</div>
+<div class="modal-body" id="feedback-body">
+</div>
+<div class="modal-footer">
+<button class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+</div>
+</div>
+</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+let batchData = []
+const URLS={
+courses:"{% url 'get_courses' 0 %}".replace("0/",""),
+branches:"{% url 'get_branches' 0 0 %}".replace("0/0/",""),
+years:"{% url 'get_academic_years' 0 %}".replace("0/",""),
+batches:"{% url 'get_batches' 0 0 %}".replace("0/0/","")
+}
+let selectedGraduation=null
+let selectedCourse=0
+let selectedYear=null
+let selectedBranch=null
+const studentsModal=new bootstrap.Modal(document.getElementById("studentsModal"))
+const feedbackModal=new bootstrap.Modal(document.getElementById("feedbackModal"))
+
+function loadCourses(graduationId,el){
+selectedGraduation=graduationId
+selectedCourse=0
+selectedBranch=null
+document.getElementById("course-box").innerHTML=""
+document.getElementById("branch-box").innerHTML=""
+document.getElementById("year-section").style.display="none"
+document.getElementById("main-content").style.display="none"
+document.getElementById("file-viewer").style.display="none"
+const name=el.innerText.trim().toLowerCase()
+if(name==="diploma"){
+fetch(URLS.branches+graduationId+"/0/")
+.then(r=>r.json())
+.then(data=>{
+document.getElementById("branch-box").innerHTML=data.map(b=>`
+<div class="col-6 col-md-3 col-lg-2">
+<div class="select-card" onclick="loadYears(${b.id},this)">
+<i class="bi bi-diagram-3-fill"></i>
+<div>${b.name}</div>
+</div>
+</div>`).join("")
+document.getElementById("branch-section").style.display="block"
+document.getElementById("course-section").style.display="none"
+})
+return
+}
+fetch(URLS.courses+graduationId+"/")
+.then(r=>r.json())
+.then(data=>{
+document.getElementById("course-box").innerHTML=data.map(c=>`
+<div class="col-6 col-md-3 col-lg-2">
+<div class="select-card" onclick="loadBranches(${c.id},this)">
+<i class="bi bi-journal-bookmark-fill"></i>
+<div>${c.name}</div>
+</div>
+</div>`).join("")
+document.getElementById("course-section").style.display="block"
+})
+}
+
+function loadBranches(courseId,el){
+selectedCourse=courseId
+document.querySelectorAll("#course-box .select-card").forEach(c=>c.classList.remove("selected"))
+el.classList.add("selected")
+document.getElementById("branch-box").innerHTML=""
+document.getElementById("year-section").style.display="none"
+document.getElementById("main-content").style.display="none"
+fetch(URLS.branches+selectedGraduation+"/"+courseId+"/")
+.then(r=>r.json())
+.then(data=>{
+document.getElementById("branch-box").innerHTML=data.map(b=>`
+<div class="col-6 col-md-3 col-lg-2">
+<div class="select-card" onclick="loadYears(${b.id},this)">
+<i class="bi bi-diagram-3-fill"></i>
+<div>${b.name}</div>
+</div>
+</div>`).join("")
+document.getElementById("branch-section").style.display="block"
+})
+}
+
+function loadYears(id,el){
+selectedBranch=id
+document.querySelectorAll("#branch-box .select-card").forEach(c=>c.classList.remove("selected"))
+el.classList.add("selected")
+fetch(URLS.years+id+"/")
+.then(r=>r.json())
+.then(d=>{
+document.getElementById("year-select").innerHTML=`<option value="">-- Select Year --</option>`+
+d.map(y=>`<option value="${y.id}">${y.year}</option>`).join("")
+document.getElementById("year-section").style.display="block"
+})
+}
+
+function loadBatches(){
+const year=document.getElementById("year-select").value
+selectedYear=year
+if(!year)return
+
+fetch(URLS.batches+year+"/"+selectedBranch+"/")
+.then(r=>r.json())
+.then(data=>{
+let rows=""
+
+data.forEach(b=>{
+batchData=data;
+const p = b.project_entries
+if(!p){
+rows+=`
+<tr>
+<td>${b.batch_number}</td>
+<td>${b.guide}</td>
+<td colspan="6">Not Submitted</td>
+<td class="fw-bold text-danger">Not Submitted</td>
+<td>-</td>
+<td>
+<button class="btn btn-sm btn-info"
+onclick="viewStudents(${b.batch_id})">Students</button>
+</td>
+<td>-</td>
+</tr>`
+return
+}
+
+let status = p.coordinator_approved ? "Approved" : "Pending"
+
+let action = p.coordinator_approved
+? "-"
+: `
+<button class="btn btn-success btn-sm"
+onclick="approveProject(${p.id})">Approve</button>
+<button class="btn btn-danger btn-sm ms-1"
+onclick="rejectProject(${p.id})">Reject</button>
+`
+
+rows+=`
+<tr>
+<td>${b.batch_number}</td>
+<td>${b.guide}</td>
+<td>${p.title || "-"}</td>
+<td>${fileBtn(p.abstract)}</td>
+<td>${fileBtn(p.documentation)}</td>
+<td>${fileBtn(p.presentation)}</td>
+<td>${fileBtn(p.nptel)}</td>
+<td>${fileBtn(p.paper)}</td>
+<td>${status}</td>
+<td>${action}</td>
+<td>
+<button class="btn btn-sm btn-info"
+onclick="viewStudents(${b.batch_id})">Students</button>
+</td>
+<td>
+<button class="nav-link"
+onclick="getFeedbackDetails(${p.id})">${p.rating}</button>
+</td>
+</tr>`
+})
+
+document.getElementById("batch-detail-table-body").innerHTML=rows
+document.getElementById("main-content").style.display="flex"
+})
+}
+
+
+function fileBtn(url){return url?`<button class="btn btn-sm btn-primary" onclick="openFile('${url}')">View</button>`:"-"}
+
+function openFile(url){
+document.getElementById("file-frame").src=url
+document.getElementById("file-viewer").style.display="block"
+}
+
+function closePreview(){
+document.getElementById("file-frame").src=""
+document.getElementById("file-viewer").style.display="none"
+}
+
+function viewStudents(batchId){
+
+    const batch = batchData.find(
+        b => String(b.batch_id) === String(batchId)
+    )
+
+    if(!batch){
+        alert("Batch data not found")
+        return
+    }
+
+    const students = batch.students
+
+    const tbody = document.getElementById("students-table-body")
+
+    if(!students.length){
+        tbody.innerHTML =
+            `<tr><td colspan="5">No students</td></tr>`
+    } else {
+        tbody.innerHTML = students.map((s,i)=>`
+            <tr>
+                <td>${i+1}</td>
+                <td>${s.name}</td>
+                <td>${s.roll_number}</td>
+                <td>${s.guide || "-"}</td>
+                <td>${s.coordinator || "-"}</td>
+            </tr>
+        `).join("")
+    }
+
+    studentsModal.show()
+}
+
+
+
+function approveProject(id){
+fetch(`approve_project/${id}/`,{method:"POST",headers:{"X-CSRFToken":getCSRFToken()}}).then(()=>loadBatches())
+}
+
+function rejectProject(id){
+fetch(`reject_project/${id}/`,{method:"POST",headers:{"X-CSRFToken":getCSRFToken()}}).then(()=>loadBatches())
+}
+
+function getCSRFToken(){
+return document.cookie.split(";").map(c=>c.trim()).find(c=>c.startsWith("csrftoken="))?.split("=")[1]
+}
+function generateFeedbackLink(){
+    if(!selectedYear || !selectedBranch){
+        alert("Please select branch and academic year first");
+        return;
+    }
+
+    fetch(`/projects/feedback/generate/${selectedYear}/${selectedBranch}/`)
+    .then(r => r.json())
+    .then(data => {
+        if(data.status === "success"){
+            navigator.clipboard.writeText(data.feedback_link);
+            alert(
+                "Feedback link copied!\n\n" +
+                data.feedback_link
+            );
+        }
+    });
+}
+
+function getFeedbackDetails(projectId){
+fetch(`/projects/ajax/get_feedback/${projectId}/`)
+.then(r=>r.json())
+.then(data=>{
+document.getElementById("feedback-body").innerHTML=`
+<table class="table table-bordered text-center">
+<thead class="table-dark">
+<tr><th>#</th><th>Name</th><th>ID</th><th>Rating</th></tr>
+</thead>
+<tbody>
+${data.feedbacks.map((f,i)=>`<tr><td>${i+1}</td><td>${f.evaluator_name}</td><td>${f.evaluator_id}</td><td>${f.rating}</td></tr>`).join("")}
+</tbody>
+</table>`
+feedbackModal.show()
+})
+}
+</script>
+
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+<script>
+function downloadBatchExcel(){
+    if(!selectedYear || !selectedBranch){
+        alert("Select academic year and branch first");
+        return;
+    }
+
+    window.location.href =
+        `/projects/download/batch-excel/${selectedYear}/${selectedBranch}/`;
+}
+function mergeNptel(){
+    if(!selectedYear || !selectedBranch){
+        alert("Please select Branch and Academic Year first");
+        return;
+    }
+
+    const btn = document.getElementById("merge_nptel_btn");
+    btn.innerHTML = "Merging...";
+    btn.disabled = true;
+
+    window.location.href =
+        `/projects/download-nptel/${selectedYear}/${selectedBranch}/`;
+
+    setTimeout(()=>{
+        btn.innerHTML = "Merge NPTEL Certificates";
+        btn.disabled = false;
+    },3000);
+}
+
+</script>
+
+</body>
+</html>
