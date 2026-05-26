@@ -42,9 +42,9 @@ INSTALLED_APPS = [
     'cloudinary_storage',
 ]
 CLOUDINARY_STORAGE = {
-    'CLOUD_NAME': 'dfbnvfee5',
-    'API_KEY': '963728186599966',
-    'API_SECRET': 'CMZK4FLiF93UzeyXhxXFcGWIF-w',
+    'CLOUD_NAME': 'dh9muu9hc',
+    'API_KEY': '726812323948688',
+    'API_SECRET': 'Wcdw1oJNEbPXASTMV3kSb9b58sA',
     'SECURE':True
 }
 import cloudinary
@@ -94,11 +94,14 @@ WSGI_APPLICATION = 'project_portal.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'aitam_project_portal',
+        'USER': 'aitam_project_portal_user',
+        'PASSWORD': '5oVUkLDpxWN9IhAzIH7doCB8JyNjhDH6',
+        'HOST': 'dpg-d8att3pakrks738q4ct0-a.oregon-postgres.render.com',
+        'PORT': '5432',
     }
 }
-
 AUTH_USER_MODEL = 'accounts.CustomUser'
 # Password validation
 # https://docs.djangoproject.com/en/5.1/ref/settings/#auth-password-validators
@@ -153,5 +156,5 @@ EMAIL_HOST_USER = 'kondakatarunsai@gmail.com'
 EMAIL_HOST_PASSWORD = 'xmcwgrxuhxgejgow'
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 CSRF_TRUSTED_ORIGINS = [
-    "https://projectportal-production.up.railway.app"
+    "https://*.render.com",
 ]
